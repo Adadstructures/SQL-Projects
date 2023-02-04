@@ -145,16 +145,8 @@ DROP COLUMN
 WITH LandClassCTE AS (
 SELECT 
 CASE
-	WHEN (LandUse LIKE 'Dorm%' OR LandUse LIKE 'Day%') THEN 'Educational'
-	WHEN (LandUse LIKE 'Residential%' OR LandUse LIKE 'Apartment%' OR LandUse LIKE '%Family'OR LandUse LIKE '%plex'OR LandUse LIKE '%Condo%'OR LandUse LIKE '%home%' OR LandUse LIKE '%line%') THEN 'Residential'
-	WHEN (LandUse LIKE 'vacant%') THEN 'Vacant'
-	WHEN (LandUse LIKE '%club%') THEN 'Recreation'
-	WHEN (LandUse LIKE '%Greenbelt%' OR LandUse LIKE '%Forest%') THEN 'Greenbelt'
-	WHEN (LandUse LIKE '%Health%' OR LandUse LIKE 'Mortuary%') THEN 'Health'
-	WHEN (LandUse LIKE '%shop%' OR LandUse LIKE '%Resturant%' OR LandUse LIKE '%Retail%' OR LandUse LIKE '%warehouse%' OR LandUse LIKE '%market%' OR LandUse LIKE '%store%' OR LandUse LIKE '%office%') THEN 'Commercial'
-	WHEN (LandUse LIKE '%charitable%' OR LandUse LIKE '%church%') THEN 'Religious/Charity'
-	WHEN (LandUse LIKE '%Manufacturing%') THEN 'Industrial'
-	ELSE 'Others'
+	WHEN (LandUse LIKE 'Residential%' OR LandUse LIKE 'Apartment%' OR LandUse LIKE '%Family'OR LandUse LIKE '%plex'OR LandUse LIKE '%Condo%'OR LandUse LIKE '%home%' OR LandUse LIKE '%line%' OR LandUse LIKE '%res%') THEN 'Residential Allocations'
+	ELSE 'Non-Residential Allocations'
 END AS LandClass
 FROM Nashville
 )
@@ -173,14 +165,8 @@ SELECT
 CASE 
 	WHEN SalePrice BETWEEN 0 AND 99999 THEN '0 - 99999'
 	WHEN SalePrice BETWEEN 100000 AND 499999 THEN '100000 - 499999'
-	WHEN SalePrice BETWEEN 500000 AND 999999 THEN '500000 - 9999999'
-	WHEN SalePrice BETWEEN 1000000 AND 4999999 THEN '1000000 - 4999999'
-	WHEN SalePrice BETWEEN 5000000 AND 9999999 THEN '5000000 - 9999999'
-	WHEN SalePrice BETWEEN 10000000 AND 19999999 THEN '10000000 - 19999999'
-	WHEN SalePrice BETWEEN 20000000 AND 29999999 THEN '20000000 - 29999999'
-	WHEN SalePrice BETWEEN 30000000 AND 39999999 THEN '30000000 - 39999999'
-	WHEN SalePrice BETWEEN 40000000 AND 49999999 THEN '40000000 - 49999999'
-	ELSE 'Above 50000000'
+	WHEN SalePrice BETWEEN 500000 AND 999999 THEN '500000 - 999999'
+	ELSE 'Above 1M'
 END AS SalesGroup
 FROM Nashville
 )
@@ -201,6 +187,25 @@ FROM Nashville
 GROUP BY SoldAsVacant
 
 --14. Year Built Classification (Time-Series)
-SELECT LandUse, TotalValue, YearBuilt, SalePrice, YEAR(SaleDateConverted) AS YearSold
+--Sale Price by Year
+SELECT DISTINCT (YearBuilt), TotalValue, YEAR(SaleDateConverted) AS YearSold, SalePrice
 FROM Nashville
 WHERE YearBuilt IS NOT NULL
+ORDER BY YearBuilt
+
+--15. Acreage Classification
+--Creating the LandClass Column
+ALTER TABLE Nashville
+ADD LandClass nvarchar(255);
+
+UPDATE Nashville
+SET LandClass =
+CASE
+	WHEN (LandUse LIKE '%Residential%' OR LandUse LIKE '%Apartment%' OR LandUse LIKE '%Family'OR LandUse LIKE '%plex'OR LandUse LIKE '%Condo%'OR LandUse LIKE '%home%' OR LandUse LIKE '%line%' OR LandUse LIKE '%res%') THEN 'Residential'
+	ELSE 'Non-Residential'
+END
+
+--Classifying Based on Acreage
+SELECT DISTINCT (LandClass), COUNT(LandClass) AS PropertyCount, SUM(Acreage) AS Acreage
+FROM Nashville
+GROUP BY LandClass
